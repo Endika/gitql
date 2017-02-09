@@ -2,9 +2,10 @@ Gitql [![Build Status](https://travis-ci.org/cloudson/gitql.png)](https://travis
 ===============
 
 Gitql is a Git query language.  
-In a repository path ...
 
-![how to use](./howtouse.gif)
+In a repository path...
+
+![how to use](howtouse.gif)
 
 See more [here](https://asciinema.org/a/8863)
 
@@ -17,7 +18,6 @@ See more [here](https://asciinema.org/a/8863)
 - `cd $GOPATH/src/github.com/cloudson/gitql`
 - `make`
 - `sudo make install`
-- `export LD_LIBRARY_PATH=$PWD/libgit2/install/lib` on linux or `export DYLD_LIBRARY_PATH=$PWD/libgit2/install/lib`on Mac OS. 
 
 
 ## Examples 
@@ -27,35 +27,35 @@ or
 `git ql "your query" `
 
 
-Look the table of commits:
+As an example, this is the `commits` table:
 
-| commits | 
-| ---------| 
+| commits |
+| ---------|
 | author |
-| author_email | 
+| author_email |
 | committer |
 | committer_email |
-| hash | 
+| hash |
 | date |
-| message | 
-| full_message | 
+| message |
+| full_message |
 
-(see more tables [here](./tables.md))
+(see more tables [here](tables.md))
 
-You can do:   
+## Example Commands
 * `select hash, author, message from commits limit 3`  
 * `select hash, message from commits where 'hell' in full_message or 'Fuck' in full_message`  
 * `select hash, message, author_email from commits where author = 'cloudson'`  
 * `select date, message from commits where date < '2014-04-10' `  
 * `select message from commits where 'hell' in message order by date asc`
 
-## Questions? 
+## Questions?
 
 `gitql -h` or open an [issue](https://github.com/cloudson/gitql/issues)
 
-Notes:   
-* Gitql doesn't want kill `git log` :sweat_smile: . It was created just for science!!  
-* It's  read-only. Nothing about delete, insert or update commits :stuck_out_tongue_closed_eyes:  
-* The limit default is 10 rows  
-* It's inspired by [textql](https://github.com/dinedal/textql)   
-* But, why gitql is a compiler/interpreter instead of just read a sqlite database with all commits, tags and etc? Answer: Because we would need to sync the tables everytime before run sql and we would have sqlite bases for each repository. :neutral_face:
+Notes:
+* Gitql doesn't want to _kill_ `git log` - it was created just for science! :sweat_smile:
+* It's read-only - no deleting, inserting, or updating tables or commits. :stuck_out_tongue_closed_eyes:
+* The default limit is 10 rows.
+* It's inspired by [textql](https://github.com/dinedal/textql).
+* Gitql is a compiler/interpreter instead of just read a sqlite database with all commits, tags, etc. because we would need to sync the tables every time before run sql and we would have sqlite bases for each repository. :neutral_face:
