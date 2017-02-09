@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"github.com/cloudson/gitql/parser"
+	"github.com/cloudson/gitql/semantical"
 	"path/filepath"
 	"testing"
 )
@@ -76,5 +78,55 @@ func TestFoundFieldsFromTable(t *testing.T) {
 		if err != nil {
 			t.Errorf(err.Error())
 		}
+	}
+}
+
+func TestCanConvertToTypeFormats(t *testing.T) {
+	folder, errFile := filepath.Abs("../")
+
+	if errFile != nil {
+		t.Errorf(errFile.Error())
+	}
+
+	query := "select author from commits"
+
+	parser.New(query)
+	ast, errGit := parser.AST()
+	if errGit != nil {
+		t.Errorf(errGit.Error())
+	}
+	ast.Path = &folder
+	errGit = semantical.Analysis(ast)
+	if errGit != nil {
+		t.Errorf(errGit.Error())
+	}
+
+	typeFormat := "json"
+	Run(ast, &typeFormat)
+}
+
+func TestNotFoundCommitWithInStatementAndSorting(t *testing.T) {
+	folder, errFile := filepath.Abs("../")
+
+	if errFile != nil {
+		t.Errorf(errFile.Error())
+	}
+
+	query := "select author from commits where 'thisisnotfound' in hash order by date desc"
+
+	parser.New(query)
+	ast, errGit := parser.AST()
+	if errGit != nil {
+		t.Errorf(errGit.Error())
+	}
+	ast.Path = &folder
+	errGit = semantical.Analysis(ast)
+	if errGit != nil {
+		t.Errorf(errGit.Error())
+	}
+
+	typeFormat := "table"
+	if errGit = Run(ast, &typeFormat); errGit != nil {
+		t.Errorf(errGit.Error())
 	}
 }

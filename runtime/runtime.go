@@ -2,11 +2,14 @@ package runtime
 
 import (
 	"fmt"
+	"log"
+	"os"
+
+	"encoding/json"
+	"github.com/cloudson/git2go"
 	"github.com/cloudson/gitql/parser"
 	"github.com/cloudson/gitql/semantical"
-	"github.com/crackcomm/go-clitable"
-	"github.com/cloudson/git2go"
-	"log"
+	"github.com/olekukonko/tablewriter"
 )
 
 const (
@@ -52,6 +55,11 @@ type RuntimeVisitor struct {
 	semantical.Visitor
 }
 
+type TableData struct {
+	rows   []tableRow
+	fields []string
+}
+
 // =========================== Error
 
 func (e *RuntimeError) Error() string {
@@ -67,24 +75,38 @@ func throwRuntimeError(message string, code uint8) *RuntimeError {
 }
 
 // =========================== Runtime
-func Run(n *parser.NodeProgram) {
+func Run(n *parser.NodeProgram, typeFormat *string) error {
 	builder = GetGitBuilder(n.Path)
 	visitor := new(RuntimeVisitor)
 	err := visitor.Visit(n)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
+	var tableData *TableData
+
 	switch findWalkType(n) {
 	case WALK_COMMITS:
-		walkCommits(n, visitor)
+		tableData, err = walkCommits(n, visitor)
 		break
 	case WALK_REFERENCES:
-		walkReferences(n, visitor)
+		tableData, err = walkReferences(n, visitor)
 		break
 	case WALK_REMOTES:
-		walkRemotes(n, visitor)
+		tableData, err = walkRemotes(n, visitor)
 		break
 	}
+
+	if err != nil {
+		return err
+	}
+
+	if *typeFormat == "json" {
+		printJson(tableData)
+	} else {
+		printTable(tableData)
+	}
+
+	return nil
 }
 
 func findWalkType(n *parser.NodeProgram) uint8 {
@@ -101,17 +123,34 @@ func findWalkType(n *parser.NodeProgram) uint8 {
 	return builder.currentWalkType
 }
 
-func printTable(rows []tableRow, fields []string) {
-	table := clitable.New(fields)
-	for _, r := range rows {
-		table.AddRow(r)
+func printTable(tableData *TableData) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetAutoFormatHeaders(false)
+	table.SetHeader(tableData.fields)
+	table.SetRowLine(true)
+	for _, row := range tableData.rows {
+		rowData := make([]string, len(tableData.fields))
+		for i, field := range tableData.fields {
+			rowData[i] = fmt.Sprintf("%v", row[field])
+		}
+		table.Append(rowData)
 	}
-	table.Print()
+	table.Render()
 }
 
-func orderTable(rows []tableRow, order *parser.NodeOrder) []tableRow {
+func printJson(tableData *TableData) error {
+	res, err := json.Marshal(tableData.rows)
+	if err != nil {
+		return throwRuntimeError(fmt.Sprintf("Json error:'%s'", err), 0)
+	} else {
+		fmt.Println(string(res))
+	}
+	return nil
+}
+
+func orderTable(rows []tableRow, order *parser.NodeOrder) ([]tableRow, error) {
 	if order == nil {
-		return rows
+		return rows, nil
 	}
 	// We will use parser.NodeGreater.Assertion(A, B) to know if
 	// A > B and then switch their positions.
@@ -132,7 +171,7 @@ func orderTable(rows []tableRow, order *parser.NodeOrder) []tableRow {
 	table := key
 	err := builder.UseFieldFromTable(field, table)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	for i, row := range rows {
@@ -145,7 +184,7 @@ func orderTable(rows []tableRow, order *parser.NodeOrder) []tableRow {
 		}
 	}
 
-	return rows
+	return rows, nil
 }
 
 func metadata(identifier string) string {
@@ -238,7 +277,7 @@ func (g *GitBuilder) isProxyTable(tableName string) bool {
 	return isIn
 }
 
-func  PossibleTables() (map[string][]string) {
+func PossibleTables() map[string][]string {
 	return map[string][]string{
 		"commits": {
 			"hash",
